@@ -1,0 +1,67 @@
+stages:
+  - lint
+  - test
+  - plan
+  - deploy
+
+# Install Terraform
+before_script:
+  - apt-get update && apt-get install -y unzip curl
+  - curl -fsSL https://apt.releases.hashicorp.com/gpg | tee /etc/apt/trusted.gpg.d/hashicorp.asc
+  - apt-add-repository "deb https://apt.releases.hashicorp.com $HASHICORP_RELEASE main"
+  - apt-get update
+  - apt-get install terraform
+
+# Job to lint Terraform code
+lint:
+  stage: lint
+  script:
+    - terraform fmt -check
+    - terraform validate
+  only:
+    - main
+
+# Job to run tests (optional: you can modify it to run your actual tests)
+test:
+  stage: test
+  script:
+    - echo "Running tests"
+  only:
+    - main
+
+# Terraform Plan for Development environment
+terraform_plan_dev:
+  stage: plan
+  script:
+    - terraform init -backend-config="key=dev/terraform.tfstate"
+    - terraform plan -var-file=terraform/dev.tfvars
+  only:
+    - main
+
+# Terraform Plan for Production environment
+terraform_plan_prod:
+  stage: plan
+  script:
+    - terraform init -backend-config="key=prod/terraform.tfstate"
+    - terraform plan -var-file=terraform/prod.tfvars
+  only:
+    - main
+
+# Deploy to Development environment
+deploy_dev:
+  stage: deploy
+  script:
+    - terraform init -backend-config="key=dev/terraform.tfstate"
+    - terraform apply -auto-approve -var-file=terraform/dev.tfvars
+  only:
+    - main
+
+# Deploy to Production environment
+deploy_prod:
+  stage: deploy
+  script:
+    - terraform init -backend-config="key=prod/terraform.tfstate"
+    - terraform apply -auto-approve -var-file=terraform/prod.tfvars
+  only:
+    - main
+
